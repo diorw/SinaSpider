@@ -1,4 +1,4 @@
-import os
+﻿import os
 import base64
 import requests
 import logging
@@ -108,4 +108,4 @@ def crawl(path,no,psw):
     myhtml = session.get(current_url + _rnd, headers=headers).content
     print(myhtml)
 
-crawl("","13750859160","wda50832211314")
+crawl("","","")
