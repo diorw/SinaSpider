@@ -75,6 +75,29 @@ def getCookies(weibo):
 
     return cookies
 
+def get_comment_username(comment_list):
+    ren_list = []
+    for i in range(1,len(comment_list)):
+        comment = str(comment_list[i])
+
+        # print(comment)
+        userid_re = re.compile(r'usercard=\\\"id=(.+?)\\')
+
+        userid_list = userid_re.findall(comment)
+        if(len(userid_list)==1):
+            userid = userid_list[0]
+        else:
+            userid = userid_list[1]
+        username_re = re.compile(r'usercard=\\\"id='+userid+r'\\\">(.+?)<')
+        username_list = username_re.findall(comment)
+        if(len(username_list)<=1):
+            continue
+        else:
+            username = username_list[1]
+            username = username.encode('latin-1').decode('unicode_escape')
+            ren_list.append(username)
+            # print(username)
+    return ren_list
 def crawl(path,no,psw):
     dic = {}
     dic['no'] = no
@@ -94,41 +117,35 @@ def crawl(path,no,psw):
 
     ## 提取评论
     comment_list = str(myhtml).split("<div comment_id")
-    for i in range(1,len(comment_list)):
-        comment = str(comment_list[i])
-
-        # print(comment)
-        userid_re = re.compile(r'usercard=\\\"id=(.+?)\\')
-
-        userid_list = userid_re.findall(comment)
-        if(len(userid_list)==1):
-            userid = userid_list[0]
-        else:
-            userid = userid_list[1]
-        username_re = re.compile(r'usercard=\\\"id='+userid+r'\\\">(.+?)<')
-        username_list = username_re.findall(comment)
-        if(len(username_list)<=1):
-            continue
-        else:
-            username = username_list[1]
-            username = username.encode('latin-1').decode('unicode_escape')
-            print(username)
-
-
+    current_page_username_list = get_comment_username(comment_list)
+    # print(current_page_username_list)
     ##
-    print(str(myhtml))
-    next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
+    # next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
+    next_page_re = re.compile(r'id=([0-9]+?)&root_comment_max_id=([0-9]+?)&root_comment_max_id_type=(.+?)&root_comment_ext_param=&page=([0-9]+?)&filter=hot&sum_comment_number=([0-9]+?)&filter_tips_before=(.+?)')
     next_page_comment_url_list = next_page_re.findall(str(myhtml))
-    next_page_comment_url = next_page_comment_url_list[0]
-    # soup = BeautifulSoup(myhtml,"lxml")
-    # print(soup.prettify())
     root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
-    current_url = root_url+next_page_comment_url+"&from=singleWeiBo&__rnd="
+    print(next_page_comment_url_list[0])
 
-    _rnd = time.time()
-    _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
-    print(current_url + _rnd)
-    myhtml = session.get(current_url + _rnd, headers=headers).content
-    print(myhtml)
-
+    while (len(next_page_comment_url_list)!=0 and len(next_page_comment_url_list[0])==6):
+        next_page_comment_url_tuple = next_page_comment_url_list[0]
+        # ('4319265517081260', '173879153799529', '0', '2', '409', '0')
+        # id=4319265517081260&root_comment_max_id=173879153799529&root_comment_max_id_type=0&root_comment_ext_param=&page=2&filter=hot&sum_comment_number=409&filter_tips_before=0
+        current_url = root_url+"id="+next_page_comment_url_tuple[0]\
+                      +"&root_comment_max_id="+next_page_comment_url_tuple[1]\
+                      +"&root_comment_max_id_type="+next_page_comment_url_tuple[2]\
+                      +"&root_comment_ext_param="\
+                      +"&page"+next_page_comment_url_tuple[3]\
+                      +"&filter=hot"\
+                      +"&sum_comment_number="+next_page_comment_url_tuple[4]\
+                      +"&filter_tips_before="+next_page_comment_url_tuple[5]\
+                      +"&from=singleWeiBo&__rnd="
+        _rnd = time.time()
+        _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
+        print(current_url + _rnd)
+        myhtml = session.get(current_url + _rnd, headers=headers).text
+        comment_list = str(myhtml).split("<div comment_id")
+        current_page_username_list = get_comment_username(comment_list)
+        print(current_page_username_list)
+        # print(myhtml)
+        next_page_comment_url_list = next_page_re.findall(str(myhtml))
 crawl("","","")
