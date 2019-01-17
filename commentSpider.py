@@ -116,19 +116,19 @@ def crawl(path,no,psw):
 
 
     ##
-    # print(str(myhtml))
-    # next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
-    # next_page_comment_url_list = next_page_re.findall(str(myhtml))
-    # next_page_comment_url = next_page_comment_url_list[0]
-    # # soup = BeautifulSoup(myhtml,"lxml")
-    # # print(soup.prettify())
-    # root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
-    # current_url = root_url+next_page_comment_url+"&from=singleWeiBo&__rnd="
-    #
-    # _rnd = time.time()
-    # _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
-    # print(current_url + _rnd)
-    # myhtml = session.get(current_url + _rnd, headers=headers).content
-    # print(myhtml)
+    print(str(myhtml))
+    next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
+    next_page_comment_url_list = next_page_re.findall(str(myhtml))
+    next_page_comment_url = next_page_comment_url_list[0]
+    # soup = BeautifulSoup(myhtml,"lxml")
+    # print(soup.prettify())
+    root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
+    current_url = root_url+next_page_comment_url+"&from=singleWeiBo&__rnd="
 
-crawl("","13750859160","wda50832211314")
+    _rnd = time.time()
+    _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
+    print(current_url + _rnd)
+    myhtml = session.get(current_url + _rnd, headers=headers).content
+    print(myhtml)
+
+crawl("","","")
