@@ -1,4 +1,4 @@
-﻿import os
+import os
 import base64
 import requests
 import logging
@@ -89,23 +89,46 @@ def crawl(path,no,psw):
     # 第一頁評論
     first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4319265517081260&from=singleWeiBo&__rnd="
     _rnd = time.time()
-
     _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
     myhtml = session.get(first_url+_rnd,headers = headers).text
 
+    ## 提取评论
+    comment_list = str(myhtml).split("<div comment_id")
+    for i in range(1,len(comment_list)):
+        comment = str(comment_list[i])
+
+        # print(comment)
+        userid_re = re.compile(r'usercard=\\\"id=(.+?)\\')
+
+        userid_list = userid_re.findall(comment)
+        if(len(userid_list)==1):
+            userid = userid_list[0]
+        else:
+            userid = userid_list[1]
+        username_re = re.compile(r'usercard=\\\"id='+userid+r'\\\">(.+?)<')
+        username_list = username_re.findall(comment)
+        if(len(username_list)<=1):
+            continue
+        else:
+            username = username_list[1]
+            username = username.encode('latin-1').decode('unicode_escape')
+            print(username)
+
+
+    ##
     # print(str(myhtml))
-    next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
-    next_page_comment_url_list = next_page_re.findall(str(myhtml))
-    next_page_comment_url = next_page_comment_url_list[0]
-    # soup = BeautifulSoup(myhtml,"lxml")
-    # print(soup.prettify())
-    root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
-    current_url = root_url+next_page_comment_url+"&from=singleWeiBo&__rnd="
+    # next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
+    # next_page_comment_url_list = next_page_re.findall(str(myhtml))
+    # next_page_comment_url = next_page_comment_url_list[0]
+    # # soup = BeautifulSoup(myhtml,"lxml")
+    # # print(soup.prettify())
+    # root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
+    # current_url = root_url+next_page_comment_url+"&from=singleWeiBo&__rnd="
+    #
+    # _rnd = time.time()
+    # _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
+    # print(current_url + _rnd)
+    # myhtml = session.get(current_url + _rnd, headers=headers).content
+    # print(myhtml)
 
-    _rnd = time.time()
-    _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
-    print(current_url + _rnd)
-    myhtml = session.get(current_url + _rnd, headers=headers).content
-    print(myhtml)
-
-crawl("","","")
+crawl("","13750859160","wda50832211314")
