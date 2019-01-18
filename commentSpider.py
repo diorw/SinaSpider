@@ -99,6 +99,7 @@ def get_comment_username(comment_list):
             # print(username)
     return ren_list
 def crawl(path,no,psw):
+    rnd_username_list = []
     dic = {}
     dic['no'] = no
     dic['psw'] = psw
@@ -110,22 +111,25 @@ def crawl(path,no,psw):
     session.cookies = cookie
 
     # 第一頁評論
-    first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4319265517081260&from=singleWeiBo&__rnd="
+    first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4329601101148730&from=singleWeiBo&__rnd="
+    # first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4329570973503115&root_comment_max_id=4329606352178800&root_comment_max_id_type=1&root_comment_ext_param=&page=95&filter=hot&sum_comment_number=7126&filter_tips_before=1&from=singleWeiBo&__rnd="
     _rnd = time.time()
     _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
     myhtml = session.get(first_url+_rnd,headers = headers).text
-
+    print(myhtml)
     ## 提取评论
     comment_list = str(myhtml).split("<div comment_id")
     current_page_username_list = get_comment_username(comment_list)
+    print(current_page_username_list)
+    rnd_username_list.extend(current_page_username_list)
     # print(current_page_username_list)
     ##
     # next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
     next_page_re = re.compile(r'id=([0-9]+?)&root_comment_max_id=([0-9]+?)&root_comment_max_id_type=(.+?)&root_comment_ext_param=&page=([0-9]+?)&filter=hot&sum_comment_number=([0-9]+?)&filter_tips_before=(.+?)')
     next_page_comment_url_list = next_page_re.findall(str(myhtml))
-    root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
-    print(next_page_comment_url_list[0])
 
+    root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
+    # time.sleep(3)
     while (len(next_page_comment_url_list)!=0 and len(next_page_comment_url_list[0])==6):
         next_page_comment_url_tuple = next_page_comment_url_list[0]
         # ('4319265517081260', '173879153799529', '0', '2', '409', '0')
@@ -134,7 +138,7 @@ def crawl(path,no,psw):
                       +"&root_comment_max_id="+next_page_comment_url_tuple[1]\
                       +"&root_comment_max_id_type="+next_page_comment_url_tuple[2]\
                       +"&root_comment_ext_param="\
-                      +"&page"+next_page_comment_url_tuple[3]\
+                      +"&page="+next_page_comment_url_tuple[3]\
                       +"&filter=hot"\
                       +"&sum_comment_number="+next_page_comment_url_tuple[4]\
                       +"&filter_tips_before="+next_page_comment_url_tuple[5]\
@@ -146,6 +150,16 @@ def crawl(path,no,psw):
         comment_list = str(myhtml).split("<div comment_id")
         current_page_username_list = get_comment_username(comment_list)
         print(current_page_username_list)
-        # print(myhtml)
+        # if ("_云间烟火" in current_page_username_list):
+        #     print("yes")
+        #     break
+        rnd_username_list.extend(current_page_username_list)
+        if(current_page_username_list==[]):
+            print(myhtml)
+
+
+        # time.sleep(3)
         next_page_comment_url_list = next_page_re.findall(str(myhtml))
-crawl("","","")
+    return rnd_username_list
+rnd_username_list = crawl("","","")
+# print(rnd_username_list)
