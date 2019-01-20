@@ -75,6 +75,8 @@ def getCookies(weibo):
 
     return cookies
 
+# comment_list：根据"<div comment" 分割的html字符串数组
+# return (用户名称数组,用户评论数组)
 def get_comment_username(comment_list):
     ren_name_list = []
     ren_content_list = []
@@ -96,19 +98,27 @@ def get_comment_username(comment_list):
             continue
         else:
             username = username_list[1]
+            # 评论开始时以：开头,unicode编码为\uff1a
+            # 中间夹杂表情、图片等，截取到评论div的末尾
             comment_content_re = re.compile(r'\\uff1a(.+?)<\\\/div')
             username = username.encode('latin-1').decode('unicode_escape')
             ren_name_list.append(username)
             
             content_list = comment_content_re.findall(comment)
             # print(content_list[0])
+            # 将其中图片<img>...</img>等用正则 "<(.+?)>"替换为空
             comment_content =  re.sub(process_comment_re,"",content_list[0])
             # print(comment_content)
+            # 转成中文编码
             comment_content  = comment_content.encode('latin-1').decode('unicode_escape')
             ren_content_list.append(comment_content)
 
             # print(username)
     return ren_name_list,ren_content_list
+
+
+# param path:存储路径 以备后用
+# param no,psw 微博账户密码
 def crawl(path,no,psw):
     rnd_username_list = []
     rnd_content_list = []
@@ -122,21 +132,22 @@ def crawl(path,no,psw):
     session = requests.session()
     session.cookies = cookie
 
-    # 第一頁評論
+    # 第一页评论url形式
     first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4330597507195162&from=singleWeiBo&__rnd="
-    # first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4329570973503115&root_comment_max_id=4329606352178800&root_comment_max_id_type=1&root_comment_ext_param=&page=95&filter=hot&sum_comment_number=7126&filter_tips_before=1&from=singleWeiBo&__rnd="
+    # 最后一个参数为时间戳 进行位数处理
     _rnd = time.time()
     _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
+
     myhtml = session.get(first_url+_rnd,headers = headers).text
-    # print(myhtml)
-    ## 提取评论
+
+    # 分割每一个评论块
     comment_list = str(myhtml).split("<div comment_id")
     current_page_username_list,current_page_content_list = get_comment_username(comment_list)
-    # print(current_page_username_list)
-    # print(current_page_content_list)
+
     rnd_username_list.extend(current_page_username_list)
     rnd_content_list.extend(current_page_content_list)
-    ##
+
+    # 后续评论的url放置前前一次请求的返回值中用正则提取
     next_page_re = re.compile(r'id=([0-9]+?)&root_comment_max_id=([0-9]+?)&root_comment_max_id_type=(.+?)&root_comment_ext_param=&page=([0-9]+?)&filter=hot&sum_comment_number=([0-9]+?)&filter_tips_before=(.+?)')
     next_page_comment_url_list = next_page_re.findall(str(myhtml))
 
@@ -146,6 +157,7 @@ def crawl(path,no,psw):
         next_page_comment_url_tuple = next_page_comment_url_list[0]
         # ('4319265517081260', '173879153799529', '0', '2', '409', '0')
         # id=4319265517081260&root_comment_max_id=173879153799529&root_comment_max_id_type=0&root_comment_ext_param=&page=2&filter=hot&sum_comment_number=409&filter_tips_before=0
+        # 组装url
         current_url = root_url+"id="+next_page_comment_url_tuple[0]\
                       +"&root_comment_max_id="+next_page_comment_url_tuple[1]\
                       +"&root_comment_max_id_type="+next_page_comment_url_tuple[2]\
@@ -168,6 +180,8 @@ def crawl(path,no,psw):
         # time.sleep(3)
         next_page_comment_url_list = next_page_re.findall(str(myhtml))
     return zip(rnd_username_list,rnd_content_list)
+
+
 rnd_list = crawl("","","")
 for username,user_comment in rnd_list:
     try:
@@ -175,4 +189,4 @@ for username,user_comment in rnd_list:
     except UnicodeEncodeError as err:
         print("评论中含有非法字符跳过")
         continue
-# print(rnd_list)
+
