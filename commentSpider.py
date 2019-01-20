@@ -76,12 +76,14 @@ def getCookies(weibo):
     return cookies
 
 def get_comment_username(comment_list):
-    ren_list = []
+    ren_name_list = []
+    ren_content_list = []
+    process_comment_re = re.compile(r'<(.+?)>')
+    userid_re = re.compile(r'usercard=\\\"id=(.+?)\\')
+
     for i in range(1,len(comment_list)):
         comment = str(comment_list[i])
-
         # print(comment)
-        userid_re = re.compile(r'usercard=\\\"id=(.+?)\\')
 
         userid_list = userid_re.findall(comment)
         if(len(userid_list)==1):
@@ -94,12 +96,22 @@ def get_comment_username(comment_list):
             continue
         else:
             username = username_list[1]
+            comment_content_re = re.compile(r'\\uff1a(.+?)<\\\/div')
             username = username.encode('latin-1').decode('unicode_escape')
-            ren_list.append(username)
+            ren_name_list.append(username)
+            
+            content_list = comment_content_re.findall(comment)
+            # print(content_list[0])
+            comment_content =  re.sub(process_comment_re,"",content_list[0])
+            # print(comment_content)
+            comment_content  = comment_content.encode('latin-1').decode('unicode_escape')
+            ren_content_list.append(comment_content)
+
             # print(username)
-    return ren_list
+    return ren_name_list,ren_content_list
 def crawl(path,no,psw):
     rnd_username_list = []
+    rnd_content_list = []
     dic = {}
     dic['no'] = no
     dic['psw'] = psw
@@ -111,20 +123,20 @@ def crawl(path,no,psw):
     session.cookies = cookie
 
     # 第一頁評論
-    first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4329601101148730&from=singleWeiBo&__rnd="
+    first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4330597507195162&from=singleWeiBo&__rnd="
     # first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4329570973503115&root_comment_max_id=4329606352178800&root_comment_max_id_type=1&root_comment_ext_param=&page=95&filter=hot&sum_comment_number=7126&filter_tips_before=1&from=singleWeiBo&__rnd="
     _rnd = time.time()
     _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
     myhtml = session.get(first_url+_rnd,headers = headers).text
-    print(myhtml)
+    # print(myhtml)
     ## 提取评论
     comment_list = str(myhtml).split("<div comment_id")
-    current_page_username_list = get_comment_username(comment_list)
-    print(current_page_username_list)
-    rnd_username_list.extend(current_page_username_list)
+    current_page_username_list,current_page_content_list = get_comment_username(comment_list)
     # print(current_page_username_list)
+    # print(current_page_content_list)
+    rnd_username_list.extend(current_page_username_list)
+    rnd_content_list.extend(current_page_content_list)
     ##
-    # next_page_re = re.compile(r'node-type=\\"comment_loading\\" action-data=\\\"(.+?)\\')
     next_page_re = re.compile(r'id=([0-9]+?)&root_comment_max_id=([0-9]+?)&root_comment_max_id_type=(.+?)&root_comment_ext_param=&page=([0-9]+?)&filter=hot&sum_comment_number=([0-9]+?)&filter_tips_before=(.+?)')
     next_page_comment_url_list = next_page_re.findall(str(myhtml))
 
@@ -143,23 +155,24 @@ def crawl(path,no,psw):
                       +"&sum_comment_number="+next_page_comment_url_tuple[4]\
                       +"&filter_tips_before="+next_page_comment_url_tuple[5]\
                       +"&from=singleWeiBo&__rnd="
+
         _rnd = time.time()
         _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
         print(current_url + _rnd)
         myhtml = session.get(current_url + _rnd, headers=headers).text
         comment_list = str(myhtml).split("<div comment_id")
-        current_page_username_list = get_comment_username(comment_list)
-        print(current_page_username_list)
-        # if ("_云间烟火" in current_page_username_list):
-        #     print("yes")
-        #     break
+        current_page_username_list,current_page_content_list = get_comment_username(comment_list)
         rnd_username_list.extend(current_page_username_list)
-        if(current_page_username_list==[]):
-            print(myhtml)
-
+        rnd_content_list.extend(current_page_content_list)
 
         # time.sleep(3)
         next_page_comment_url_list = next_page_re.findall(str(myhtml))
-    return rnd_username_list
-rnd_username_list = crawl("","","")
-# print(rnd_username_list)
+    return zip(rnd_username_list,rnd_content_list)
+rnd_list = crawl("","","")
+for username,user_comment in rnd_list:
+    try:
+        print(username+": "+ user_comment)
+    except UnicodeEncodeError as err:
+        print("评论中含有非法字符跳过")
+        continue
+# print(rnd_list)
