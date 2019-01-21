@@ -3,23 +3,29 @@ import base64
 import requests
 import logging
 import json
+import re
+import time
 import http.cookiejar
 import urllib.parse
 from bs4 import BeautifulSoup
-import time
 import sys
+import argparse
+# 设置递归深度，否则soup 会爆栈
+# sys.setrecursionlimit(100000)
 
-sys.setrecursionlimit(100000)
-import re
-import random
-from urllib import parse
 IDENTIFY = 1  # 验证码输入方式:        1:看截图aa.png，手动输入     2:云打码
-COOKIE_GETWAY = 0 # 0 代表从https://login.sina.com.cn/sso/login.php?client=ssologin.js(v1.4.18) 获取cookie   # 1 代表从https://weibo.cn/login/获取Cookie
+COOKIE_GETWAY = 0
+# 0 代表从https://login.sina.com.cn/sso/login.php?client=ssologin.js(v1.4.18) 获取cookie
+# 1 代表从https://weibo.cn/login/获取Cookie
 logger = logging.getLogger(__name__)
 logging.getLogger("selenium").setLevel(logging.WARNING)  # 将selenium的日志级别设成WARNING，太烦人
+user_agent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36"
+headers = {'User-Agent': user_agent, 'Connection': 'close'}
 myWeiBo = [
 
 ]
+
+
 def getCookie(account, password):
     if COOKIE_GETWAY == 0:
         return get_cookie_from_login_sina_com_cn(account, password)
@@ -27,8 +33,9 @@ def getCookie(account, password):
     #     return get_cookie_from_weibo_cn(account, password)
     # else:
         logger.error("COOKIE_GETWAY Error!")
-user_agent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36"
-headers = {'User-Agent': user_agent, 'Connection': 'close'}
+
+
+
 def get_cookie_from_login_sina_com_cn(account, password):
     """ 获取一个账号的Cookie """
     loginURL = "https://login.sina.com.cn/sso/login.php?client=ssologin.js(v1.4.18)"
@@ -63,6 +70,8 @@ def get_cookie_from_login_sina_com_cn(account, password):
     else:
         logger.warning("Failed!( Reason:%s )" % info["reason"])
         return ""
+
+
 def getCookies(weibo):
     """ 获取Cookies """
     cookies = []
@@ -74,6 +83,7 @@ def getCookies(weibo):
             cookies.append(cookie)
 
     return cookies
+
 
 # comment_list：根据"<div comment" 分割的html字符串数组
 # return (用户名称数组,用户评论数组)
@@ -98,7 +108,7 @@ def get_comment_username(comment_list):
             continue
         else:
             username = username_list[1]
-            # 评论开始时以：开头,unicode编码为\uff1a
+            # 评论开始时以"："开头,unicode编码为\uff1a
             # 中间夹杂表情、图片等，截取到评论div的末尾
             comment_content_re = re.compile(r'\\uff1a(.+?)<\\\/div')
             username = username.encode('latin-1').decode('unicode_escape')
@@ -107,10 +117,10 @@ def get_comment_username(comment_list):
             content_list = comment_content_re.findall(comment)
             # print(content_list[0])
             # 将其中图片<img>...</img>等用正则 "<(.+?)>"替换为空
-            comment_content =  re.sub(process_comment_re,"",content_list[0])
+            comment_content = re.sub(process_comment_re, "", content_list[0])
             # print(comment_content)
             # 转成中文编码
-            comment_content  = comment_content.encode('latin-1').decode('unicode_escape')
+            comment_content = comment_content.encode('latin-1').decode('unicode_escape')
             ren_content_list.append(comment_content)
 
             # print(username)
@@ -148,25 +158,29 @@ def crawl(path,no,psw):
     rnd_content_list.extend(current_page_content_list)
 
     # 后续评论的url放置前前一次请求的返回值中用正则提取
-    next_page_re = re.compile(r'id=([0-9]+?)&root_comment_max_id=([0-9]+?)&root_comment_max_id_type=(.+?)&root_comment_ext_param=&page=([0-9]+?)&filter=hot&sum_comment_number=([0-9]+?)&filter_tips_before=(.+?)')
+    next_page_re = re.compile(r'id=([0-9]+?)&root_comment_max_id=([0-9]+?)'
+                              r'&root_comment_max_id_type=(.+?)'
+                              r'&root_comment_ext_param=&page=([0-9]+?)'
+                              r'&filter=hot&sum_comment_number=([0-9]+?)'
+                              r'&filter_tips_before=(.+?)')
     next_page_comment_url_list = next_page_re.findall(str(myhtml))
 
     root_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&"
     # time.sleep(3)
-    while (len(next_page_comment_url_list)!=0 and len(next_page_comment_url_list[0])==6):
+    while (len(next_page_comment_url_list) != 0 and len(next_page_comment_url_list[0]) == 6):
         next_page_comment_url_tuple = next_page_comment_url_list[0]
         # ('4319265517081260', '173879153799529', '0', '2', '409', '0')
         # id=4319265517081260&root_comment_max_id=173879153799529&root_comment_max_id_type=0&root_comment_ext_param=&page=2&filter=hot&sum_comment_number=409&filter_tips_before=0
         # 组装url
-        current_url = root_url+"id="+next_page_comment_url_tuple[0]\
-                      +"&root_comment_max_id="+next_page_comment_url_tuple[1]\
-                      +"&root_comment_max_id_type="+next_page_comment_url_tuple[2]\
-                      +"&root_comment_ext_param="\
-                      +"&page="+next_page_comment_url_tuple[3]\
-                      +"&filter=hot"\
-                      +"&sum_comment_number="+next_page_comment_url_tuple[4]\
-                      +"&filter_tips_before="+next_page_comment_url_tuple[5]\
-                      +"&from=singleWeiBo&__rnd="
+        current_url = root_url+"id=" + next_page_comment_url_tuple[0]\
+                      + "&root_comment_max_id=" + next_page_comment_url_tuple[1]\
+                      + "&root_comment_max_id_type=" + next_page_comment_url_tuple[2]\
+                      + "&root_comment_ext_param="\
+                      + "&page=" + next_page_comment_url_tuple[3]\
+                      + "&filter=hot"\
+                      + "&sum_comment_number=" + next_page_comment_url_tuple[4]\
+                      + "&filter_tips_before=" + next_page_comment_url_tuple[5]\
+                      + "&from=singleWeiBo&__rnd="
 
         _rnd = time.time()
         _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
@@ -182,11 +196,18 @@ def crawl(path,no,psw):
     return zip(rnd_username_list,rnd_content_list)
 
 
-rnd_list = crawl("","","")
-for username,user_comment in rnd_list:
-    try:
-        print(username+": "+ user_comment)
-    except UnicodeEncodeError as err:
-        print("评论中含有非法字符跳过")
-        continue
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="your script description")
+    parser.add_argument('account', nargs=2, type=str)
+    args = parser.parse_args()
+    AccountID = args.account[0]
+    AccountPsw = args.account[1]
+
+    rnd_list = crawl("", AccountID, AccountPsw)
+    for username, user_comment in rnd_list:
+        try:
+            print(username+ ": " + user_comment)
+        except UnicodeEncodeError as err:
+            print("评论中含有非法字符跳过")
+            continue
 
