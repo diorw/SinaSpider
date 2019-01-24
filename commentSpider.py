@@ -85,6 +85,16 @@ def getCookies(weibo):
     return cookies
 
 
+def change_code(unicode_content):
+    return unicode_content.encode('latin-1').decode('unicode_escape')
+
+
+def get_timestamp():
+    _rnd = time.time()
+    _rnd = str(_rnd).split(".")[0] + str(_rnd).split(".")[1][:3]
+    return _rnd
+
+
 # comment_list：根据"<div comment" 分割的html字符串数组
 # return (用户名称数组,用户评论数组)
 def get_comment_username(comment_list):
@@ -111,7 +121,7 @@ def get_comment_username(comment_list):
             # 评论开始时以"："开头,unicode编码为\uff1a
             # 中间夹杂表情、图片等，截取到评论div的末尾
             comment_content_re = re.compile(r'\\uff1a(.+?)<\\\/div')
-            username = username.encode('latin-1').decode('unicode_escape')
+            username = change_code(username)
             ren_name_list.append(username)
             
             content_list = comment_content_re.findall(comment)
@@ -120,7 +130,7 @@ def get_comment_username(comment_list):
             comment_content = re.sub(process_comment_re, "", content_list[0])
             # print(comment_content)
             # 转成中文编码
-            comment_content = comment_content.encode('latin-1').decode('unicode_escape')
+            comment_content = change_code(comment_content)
             ren_content_list.append(comment_content)
 
             # print(username)
@@ -145,8 +155,7 @@ def crawl(path,no,psw):
     # 第一页评论url形式
     first_url = "https://weibo.com/aj/v6/comment/big?ajwvr=6&id=4330597507195162&from=singleWeiBo&__rnd="
     # 最后一个参数为时间戳 进行位数处理
-    _rnd = time.time()
-    _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
+    _rnd = get_timestamp()
 
     myhtml = session.get(first_url+_rnd,headers = headers).text
 
@@ -182,8 +191,7 @@ def crawl(path,no,psw):
                       + "&filter_tips_before=" + next_page_comment_url_tuple[5]\
                       + "&from=singleWeiBo&__rnd="
 
-        _rnd = time.time()
-        _rnd = str(_rnd).split(".")[0]+str(_rnd).split(".")[1][:3]
+        _rnd = get_timestamp()
         print(current_url + _rnd)
         myhtml = session.get(current_url + _rnd, headers=headers).text
         comment_list = str(myhtml).split("<div comment_id")
